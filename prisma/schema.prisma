@@ -1,0 +1,125 @@
+// Prisma Schema for Diagnostic Test Booking & Payment System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name               String    @db.VarChar(255)
+  phoneNumber        String?   @map("phone_number") @db.VarChar(20)
+  email              String    @unique @db.VarChar(255)
+  passwordHash       String    @map("password_hash") @db.VarChar(255)
+  address            String?   @db.Text
+  age                Int?
+  gender             String?   @db.VarChar(20)
+  relationshipStatus String?   @map("relationship_status") @db.VarChar(50)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bookings           Booking[]
+
+  @@map("users")
+  @@index([email], map: "idx_users_email")
+}
+
+model DiagnosticCenter {
+  id        String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name      String                 @db.VarChar(255)
+  location  String                 @db.Text
+  createdAt DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tests     DiagnosticCenterTest[]
+
+  @@map("diagnostic_centers")
+}
+
+model Test {
+  id          String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String                 @db.VarChar(255)
+  description String?                @db.Text
+  disease     String?                @db.VarChar(255)
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  centers     DiagnosticCenterTest[]
+
+  @@map("tests")
+}
+
+model DiagnosticCenterTest {
+  id                 String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  diagnosticCenterId String             @map("diagnostic_center_id") @db.Uuid
+  testId             String             @map("test_id") @db.Uuid
+  price              Decimal            @db.Decimal(10, 2)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  diagnosticCenter   DiagnosticCenter   @relation(fields: [diagnosticCenterId], references: [id], onDelete: Cascade)
+  test               Test               @relation(fields: [testId], references: [id], onDelete: Cascade)
+  slots              AvailabilitySlot[]
+
+  @@unique([diagnosticCenterId, testId], map: "unique_center_test")
+  @@map("diagnostic_center_tests")
+  @@index([diagnosticCenterId], map: "idx_center_tests_center")
+  @@index([testId], map: "idx_center_tests_test")
+}
+
+model AvailabilitySlot {
+  id                     String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  diagnosticCenterTestId String               @map("diagnostic_center_test_id") @db.Uuid
+  startTime              DateTime             @map("start_time") @db.Timestamptz(6)
+  endTime                DateTime             @map("end_time") @db.Timestamptz(6)
+  status                 String               @default("open") @db.VarChar(20)
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  diagnosticCenterTest   DiagnosticCenterTest @relation(fields: [diagnosticCenterTestId], references: [id], onDelete: Cascade)
+  bookings               Booking[]
+
+  @@map("availability_slots")
+  @@index([diagnosticCenterTestId], map: "idx_slots_center_test")
+  @@index([status], map: "idx_slots_status")
+}
+
+model Payment {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  mop       String    @db.VarChar(50)
+  status    String    @default("pending") @db.VarChar(20)
+  eventId   String?   @unique @map("event_id") @db.VarChar(255)
+  receipt   String?   @db.VarChar(255)
+  amount    Decimal   @db.Decimal(10, 2)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bookings  Booking[]
+
+  @@map("payments")
+  @@index([eventId], map: "idx_payments_event_id")
+}
+
+model Booking {
+  id        String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  slotId    String           @map("slot_id") @db.Uuid
+  paymentId String?          @map("payment_id") @db.Uuid
+  status    String           @default("pending") @db.VarChar(20)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot      AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  payment   Payment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@map("bookings")
+  @@index([userId], map: "idx_bookings_user")
+  @@index([slotId], map: "idx_bookings_slot")
+  @@index([status], map: "idx_bookings_status")
+}
