@@ -2,10 +2,28 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "DiagBooking@2026#SecretKey";
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^\+?[0-9\s\-()]{10,18}$/;
 
 export const signup = async (name, email, password, extraData = {}) => {
   const normalizedEmail = email.trim().toLowerCase();
+
+  // Validate Email
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error("Invalid email address format (e.g. user@example.com)");
+  }
+
+  // Validate Password Length
+  if (password.length < 6) {
+    throw new Error("Password must be at least 6 characters long");
+  }
+
+  // Validate Phone Number if provided
+  const phone = extraData.phone_number || extraData.phoneNumber;
+  if (phone && !PHONE_REGEX.test(phone.toString().trim())) {
+    throw new Error("Invalid phone number format (must contain 10-15 digits)");
+  }
 
   const existingUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
@@ -22,7 +40,7 @@ export const signup = async (name, email, password, extraData = {}) => {
       name: name.trim(),
       email: normalizedEmail,
       passwordHash: hashedPassword,
-      phoneNumber: extraData.phone_number || extraData.phoneNumber || null,
+      phoneNumber: phone ? phone.toString().trim() : null,
       address: extraData.address || null,
       age: extraData.age ? parseInt(extraData.age, 10) : null,
       gender: extraData.gender || null,
@@ -47,6 +65,10 @@ export const signup = async (name, email, password, extraData = {}) => {
 export const login = async (email, password) => {
   const normalizedEmail = email.trim().toLowerCase();
 
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error("Invalid email address format");
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
   });
@@ -63,7 +85,7 @@ export const login = async (email, password) => {
   const token = jwt.sign(
     { userId: user.id, email: user.email },
     JWT_SECRET,
-    { expiresIn: "24h" }
+    { expiresIn: "1d" }
   );
 
   const { passwordHash, ...userWithoutPassword } = user;

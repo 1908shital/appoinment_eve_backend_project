@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "diagnostic-booking-api-collection",
 		"name": "Diagnostic Booking System API (Prisma Backend)",
-		"description": "Complete Postman API Collection for testing Users, Centers, Tests, Center-Test mappings, Availability Slots, Bookings, and Idempotent Payments.",
+		"description": "Complete Postman API Collection with JWT Bearer Auth for testing Users, Centers, Tests, Center-Test mappings, Availability Slots, Bookings, and Idempotent Payments.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -12,12 +12,12 @@
 			"type": "string"
 		},
 		{
-			"key": "userId",
+			"key": "token",
 			"value": "",
 			"type": "string"
 		},
 		{
-			"key": "token",
+			"key": "userId",
 			"value": "",
 			"type": "string"
 		},
@@ -95,6 +95,12 @@
 				{
 					"name": "Get User by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -113,8 +119,14 @@
 			"name": "2. Diagnostic Centers",
 			"item": [
 				{
-					"name": "Create Diagnostic Center",
+					"name": "Create Diagnostic Center (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -173,8 +185,14 @@
 					}
 				},
 				{
-					"name": "Update Diagnostic Center",
+					"name": "Update Diagnostic Center (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -194,8 +212,14 @@
 					}
 				},
 				{
-					"name": "Delete Diagnostic Center",
+					"name": "Delete Diagnostic Center (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -214,8 +238,14 @@
 			"name": "3. Diagnostic Tests",
 			"item": [
 				{
-					"name": "Create Test",
+					"name": "Create Test (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -274,8 +304,14 @@
 					}
 				},
 				{
-					"name": "Update Test",
+					"name": "Update Test (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -295,8 +331,14 @@
 					}
 				},
 				{
-					"name": "Delete Test",
+					"name": "Delete Test (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -315,8 +357,14 @@
 			"name": "4. Center-Test Mapping & Pricing",
 			"item": [
 				{
-					"name": "Map Test to Center with Price",
+					"name": "Map Test to Center with Price (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -360,8 +408,14 @@
 					}
 				},
 				{
-					"name": "Delete Center Test Mapping",
+					"name": "Delete Center Test Mapping (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "DELETE",
 						"header": [],
 						"url": {
@@ -380,8 +434,14 @@
 			"name": "5. Availability Slots",
 			"item": [
 				{
-					"name": "Create Availability Slot",
+					"name": "Create Availability Slot (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -394,6 +454,24 @@
 							"raw": "{{baseUrl}}/slots",
 							"host": ["{{baseUrl}}"],
 							"path": ["slots"]
+						}
+					}
+				},
+				{
+					"name": "Generate 7-Day Slots (Auth)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/slots/generate-7days",
+							"host": ["{{baseUrl}}"],
+							"path": ["slots", "generate-7days"]
 						}
 					}
 				},
@@ -444,8 +522,14 @@
 					}
 				},
 				{
-					"name": "Update Slot Status",
+					"name": "Update Slot Status (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "PATCH",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -470,8 +554,14 @@
 			"name": "6. Bookings",
 			"item": [
 				{
-					"name": "Create Booking",
+					"name": "Create Booking (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -488,8 +578,14 @@
 					}
 				},
 				{
-					"name": "Get All Bookings",
+					"name": "Get All Bookings (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -500,8 +596,14 @@
 					}
 				},
 				{
-					"name": "Get Booking by ID",
+					"name": "Get Booking by ID (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -515,8 +617,14 @@
 					}
 				},
 				{
-					"name": "Cancel Booking",
+					"name": "Cancel Booking (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "PATCH",
 						"header": [],
 						"url": {
@@ -535,8 +643,14 @@
 			"name": "7. Payments & Webhooks",
 			"item": [
 				{
-					"name": "Initiate Payment",
+					"name": "Initiate Payment (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "POST",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
@@ -571,8 +685,14 @@
 					}
 				},
 				{
-					"name": "Get Payment by ID",
+					"name": "Get Payment by ID (Auth)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{ "key": "token", "value": "{{token}}", "type": "string" }
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
