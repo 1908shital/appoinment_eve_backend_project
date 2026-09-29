@@ -124,7 +124,11 @@ Webhooks may be delivered multiple times by payment providers. **Idempotency is 
 
 ---
 
-## 5. Directory Structure Checklist
+---
 
-- [x] Structure recorded: `app/` (models, schemas, repositories, services, endpoints, core, utils), `tests/`, `migrations/` (Alembic).
-- [ ] Database models and schemas defined once user provides schema specifications.
+## 6. Strict Non-Destructive API & Endpoint Policy
+
+> [!CRITICAL]
+> **NEVER DELETE OR REMOVE EXISTING APIS**:
+> - When requested to add new APIs, endpoints, features, controllers, or routes, ALL pre-existing APIs and endpoints MUST be strictly preserved.
+> - Modifications must be purely additive. Never remove existing HTTP handlers (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`) or service methods unless explicitly commanded by the user.

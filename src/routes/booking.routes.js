@@ -1,13 +1,12 @@
-const express = require("express");
-const bookingController = require("../controllers/booking.controller");
-const validate = require("../middleware/validation.middleware");
-const { createBookingSchema } = require("../schemas/booking.schema");
+import express from "express";
+import * as bookingController from "../controllers/booking.controller.js";
+import validate from "../middleware/validation.middleware.js";
 
 const router = express.Router();
 
-router.post("/", validate(createBookingSchema), bookingController.createBooking);
+router.post("/", validate(["user_id", "slot_id"]), bookingController.createBooking);
 router.get("/", bookingController.getBookings);
 router.get("/:id", bookingController.getBookingById);
 router.patch("/:id/cancel", bookingController.cancelBooking);
 
-module.exports = router;
+export default router;

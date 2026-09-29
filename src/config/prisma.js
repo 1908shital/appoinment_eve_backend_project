@@ -1,4 +1,9 @@
-const { PrismaClient } = require("@prisma/client");
+import dns from "dns";
+import { PrismaClient } from "@prisma/client";
+
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (e) {}
 
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
@@ -8,4 +13,4 @@ const prisma = new PrismaClient({
   },
 });
 
-module.exports = prisma;
+export default prisma;

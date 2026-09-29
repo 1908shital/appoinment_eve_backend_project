@@ -1,12 +1,11 @@
-const express = require("express");
-const userController = require("../controllers/user.controller");
-const validate = require("../middleware/validation.middleware");
-const { signupSchema, loginSchema } = require("../schemas/user.schema");
+import express from "express";
+import * as userController from "../controllers/user.controller.js";
+import validate from "../middleware/validation.middleware.js";
 
 const router = express.Router();
 
-router.post("/signup", validate(signupSchema), userController.signup);
-router.post("/login", validate(loginSchema), userController.login);
+router.post("/signup", validate(["name", "email", "password"]), userController.signup);
+router.post("/login", validate(["email", "password"]), userController.login);
 router.get("/:id", userController.getUserById);
 
-module.exports = router;
+export default router;

@@ -1,7 +1,8 @@
-const { DiagnosticCenterTest } = require("../models");
+import prisma from "../config/prisma.js";
+import redis from "../config/redis.js";
 
-const createCenterTest = async (diagnosticCenterId, testId, price) => {
-  const existing = await DiagnosticCenterTest.findUnique({
+export const createCenterTest = async (diagnosticCenterId, testId, price) => {
+  const existing = await prisma.diagnosticCenterTest.findUnique({
     where: {
       diagnosticCenterId_testId: {
         diagnosticCenterId,
@@ -14,7 +15,7 @@ const createCenterTest = async (diagnosticCenterId, testId, price) => {
     throw new Error("This diagnostic center test mapping already exists");
   }
 
-  return await DiagnosticCenterTest.create({
+  const newMapping = await prisma.diagnosticCenterTest.create({
     data: {
       diagnosticCenterId,
       testId,
@@ -25,10 +26,19 @@ const createCenterTest = async (diagnosticCenterId, testId, price) => {
       test: true,
     },
   });
+
+  try {
+    await redis.del(`center:tests:${diagnosticCenterId}`);
+    await redis.del(`test:centers:${testId}`);
+  } catch (err) {
+    console.warn("[Redis Cache Invalidation Warning]", err.message);
+  }
+
+  return newMapping;
 };
 
-const getAllCenterTests = async () => {
-  return await DiagnosticCenterTest.findMany({
+export const getAllCenterTests = async () => {
+  return await prisma.diagnosticCenterTest.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       diagnosticCenter: true,
@@ -38,8 +48,8 @@ const getAllCenterTests = async () => {
   });
 };
 
-const getCenterTestById = async (id) => {
-  const centerTest = await DiagnosticCenterTest.findUnique({
+export const getCenterTestById = async (id) => {
+  const centerTest = await prisma.diagnosticCenterTest.findUnique({
     where: { id },
     include: {
       diagnosticCenter: true,
@@ -53,17 +63,19 @@ const getCenterTestById = async (id) => {
   return centerTest;
 };
 
-const deleteCenterTest = async (id) => {
-  const centerTest = await DiagnosticCenterTest.findUnique({ where: { id } });
+export const deleteCenterTest = async (id) => {
+  const centerTest = await prisma.diagnosticCenterTest.findUnique({ where: { id } });
   if (!centerTest) {
     throw new Error("Diagnostic Center Test mapping not found");
   }
-  return await DiagnosticCenterTest.delete({ where: { id } });
-};
+  const deleted = await prisma.diagnosticCenterTest.delete({ where: { id } });
 
-module.exports = {
-  createCenterTest,
-  getAllCenterTests,
-  getCenterTestById,
-  deleteCenterTest,
+  try {
+    await redis.del(`center:tests:${centerTest.diagnosticCenterId}`);
+    await redis.del(`test:centers:${centerTest.testId}`);
+  } catch (err) {
+    console.warn("[Redis Cache Invalidation Warning]", err.message);
+  }
+
+  return deleted;
 };

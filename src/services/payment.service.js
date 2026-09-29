@@ -1,7 +1,13 @@
-const { prisma, Payment, Booking } = require("../models");
+import prisma from "../config/prisma.js";
+import redis from "../config/redis.js";
+import { getSlotLockKey } from "../utils/redisKeys.util.js";
 
-const createPayment = async (bookingId, mop, amount) => {
-  const booking = await Booking.findUnique({ where: { id: bookingId } });
+export const createPayment = async (bookingId, mop, amount) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { slot: true },
+  });
+
   if (!booking) {
     throw new Error("Booking not found");
   }
@@ -30,9 +36,8 @@ const createPayment = async (bookingId, mop, amount) => {
   );
 };
 
-const handleWebhook = async (eventId, paymentId, status, receipt = null) => {
-  // Check idempotency by eventId
-  const existingEvent = await Payment.findFirst({
+export const handleWebhook = async (eventId, paymentId, status, receipt = null) => {
+  const existingEvent = await prisma.payment.findFirst({
     where: { eventId },
   });
 
@@ -44,7 +49,7 @@ const handleWebhook = async (eventId, paymentId, status, receipt = null) => {
     };
   }
 
-  const payment = await Payment.findUnique({
+  const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { bookings: true },
   });
@@ -53,7 +58,9 @@ const handleWebhook = async (eventId, paymentId, status, receipt = null) => {
     throw new Error("Payment record not found");
   }
 
-  return await prisma.$transaction(
+  const isSuccess = status.toLowerCase() === "success";
+
+  const result = await prisma.$transaction(
     async (tx) => {
       const updatedPayment = await tx.payment.update({
         where: { id: paymentId },
@@ -64,12 +71,22 @@ const handleWebhook = async (eventId, paymentId, status, receipt = null) => {
         },
       });
 
-      const targetBookingStatus = status.toLowerCase() === "success" ? "booked" : "canceled";
+      const targetBookingStatus = isSuccess ? "booked" : "canceled";
 
       await tx.booking.updateMany({
         where: { paymentId: paymentId },
         data: { status: targetBookingStatus },
       });
+
+      for (const booking of payment.bookings) {
+        if (isSuccess) {
+          // Confirm slot as booked in database upon successful payment
+          await tx.availabilitySlot.update({
+            where: { id: booking.slotId },
+            data: { status: "booked" },
+          });
+        }
+      }
 
       return {
         alreadyProcessed: false,
@@ -82,10 +99,22 @@ const handleWebhook = async (eventId, paymentId, status, receipt = null) => {
       timeout: 30000,
     }
   );
+
+  // Release Redis locks for all associated slots
+  for (const booking of payment.bookings) {
+    try {
+      const slotLockKey = getSlotLockKey(booking.slotId);
+      await redis.del(slotLockKey);
+    } catch (err) {
+      console.warn("[Redis Lock Release Warning]", err.message);
+    }
+  }
+
+  return result;
 };
 
-const getPaymentById = async (id) => {
-  const payment = await Payment.findUnique({
+export const getPaymentById = async (id) => {
+  const payment = await prisma.payment.findUnique({
     where: { id },
     include: {
       bookings: {
@@ -104,10 +133,4 @@ const getPaymentById = async (id) => {
   }
 
   return payment;
-};
-
-module.exports = {
-  createPayment,
-  handleWebhook,
-  getPaymentById,
 };

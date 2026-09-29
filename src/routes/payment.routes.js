@@ -1,12 +1,11 @@
-const express = require("express");
-const paymentController = require("../controllers/payment.controller");
-const validate = require("../middleware/validation.middleware");
-const { createPaymentSchema, webhookSchema } = require("../schemas/payment.schema");
+import express from "express";
+import * as paymentController from "../controllers/payment.controller.js";
+import validate from "../middleware/validation.middleware.js";
 
 const router = express.Router();
 
-router.post("/", validate(createPaymentSchema), paymentController.createPayment);
-router.post("/webhook", validate(webhookSchema), paymentController.handleWebhook);
+router.post("/", validate(["booking_id", "mop", "amount"]), paymentController.createPayment);
+router.post("/webhook", validate(["event_id", "payment_id", "status"]), paymentController.handleWebhook);
 router.get("/:id", paymentController.getPaymentById);
 
-module.exports = router;
+export default router;

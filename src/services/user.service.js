@@ -1,37 +1,56 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const userRepository = require("../repositories/user.repository");
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import prisma from "../config/prisma.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key";
 
-const signup = async (name, email, password, extraData = {}) => {
+export const signup = async (name, email, password, extraData = {}) => {
   const normalizedEmail = email.trim().toLowerCase();
 
-  const existingUser = await userRepository.findUserByEmail(normalizedEmail);
+  const existingUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
   if (existingUser) {
     throw new Error("User with this email already exists");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await userRepository.createUser({
-    name: name.trim(),
-    email: normalizedEmail,
-    passwordHash: hashedPassword,
-    phoneNumber: extraData.phone_number || extraData.phoneNumber,
-    address: extraData.address,
-    age: extraData.age,
-    gender: extraData.gender,
-    relationshipStatus: extraData.relationship_status || extraData.relationshipStatus,
+  const user = await prisma.user.create({
+    data: {
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash: hashedPassword,
+      phoneNumber: extraData.phone_number || extraData.phoneNumber || null,
+      address: extraData.address || null,
+      age: extraData.age ? parseInt(extraData.age, 10) : null,
+      gender: extraData.gender || null,
+      relationshipStatus: extraData.relationship_status || extraData.relationshipStatus || null,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      address: true,
+      age: true,
+      gender: true,
+      relationshipStatus: true,
+      createdAt: true,
+    },
   });
 
   return user;
 };
 
-const login = async (email, password) => {
+export const login = async (email, password) => {
   const normalizedEmail = email.trim().toLowerCase();
 
-  const user = await userRepository.findUserByEmail(normalizedEmail);
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
   if (!user) {
     throw new Error("Invalid credentials");
   }
@@ -55,16 +74,25 @@ const login = async (email, password) => {
   };
 };
 
-const getUserById = async (id) => {
-  const user = await userRepository.findUserById(id);
+export const getUserById = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      address: true,
+      age: true,
+      gender: true,
+      relationshipStatus: true,
+      createdAt: true,
+      bookings: true,
+    },
+  });
+
   if (!user) {
     throw new Error("User not found");
   }
   return user;
-};
-
-module.exports = {
-  signup,
-  login,
-  getUserById,
 };

@@ -1,3 +1,6 @@
 node_modules/
 .env
 coverage/
+context.md
+.agents/
+src/scripts/seed.js

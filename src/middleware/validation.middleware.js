@@ -1,15 +1,12 @@
-
-const validate = (schema) => {
+const validate = (requiredFields = []) => {
   return (req, res, next) => {
+    const data = req.body || {};
+    const fields = Array.isArray(requiredFields)
+      ? requiredFields
+      : Object.keys(requiredFields || {});
 
-    const data = req.body;
-
-    for (const field in schema) {
-
-      if (
-        schema[field].required &&
-        (!data[field] || data[field].toString().trim() === "")
-      ) {
+    for (const field of fields) {
+      if (data[field] === undefined || data[field] === null || data[field].toString().trim() === "") {
         return res.status(400).json({
           success: false,
           message: `${field} is required`,
@@ -21,4 +18,4 @@ const validate = (schema) => {
   };
 };
 
-module.exports = validate;
+export default validate;

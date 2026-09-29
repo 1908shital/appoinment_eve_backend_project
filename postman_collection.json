@@ -158,6 +158,21 @@
 					}
 				},
 				{
+					"name": "Get All Tests in a Diagnostic Center",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/diagnostic-centers/:id/tests",
+							"host": ["{{baseUrl}}"],
+							"path": ["diagnostic-centers", ":id", "tests"],
+							"variable": [
+								{ "key": "id", "value": "{{centerId}}" }
+							]
+						}
+					}
+				},
+				{
 					"name": "Update Diagnostic Center",
 					"request": {
 						"method": "PUT",
@@ -237,6 +252,21 @@
 							"raw": "{{baseUrl}}/tests/:id",
 							"host": ["{{baseUrl}}"],
 							"path": ["tests", ":id"],
+							"variable": [
+								{ "key": "id", "value": "{{testId}}" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Centers Offering a Test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tests/:id/centers",
+							"host": ["{{baseUrl}}"],
+							"path": ["tests", ":id", "centers"],
 							"variable": [
 								{ "key": "id", "value": "{{testId}}" }
 							]
@@ -378,6 +408,22 @@
 							"path": ["slots"],
 							"query": [
 								{ "key": "status", "value": "open" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Slots by Center and Test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/slots/center-test?diagnostic_center_id={{centerId}}&test_id={{testId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["slots", "center-test"],
+							"query": [
+								{ "key": "diagnostic_center_id", "value": "{{centerId}}" },
+								{ "key": "test_id", "value": "{{testId}}" }
 							]
 						}
 					}

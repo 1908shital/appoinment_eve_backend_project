@@ -1,7 +1,7 @@
-const { Test } = require("../models");
+import prisma from "../config/prisma.js";
 
-const createTest = async (name, description, disease) => {
-  return await Test.create({
+export const createTest = async (name, description, disease) => {
+  return await prisma.test.create({
     data: {
       name: name.trim(),
       description: description ? description.trim() : null,
@@ -10,8 +10,8 @@ const createTest = async (name, description, disease) => {
   });
 };
 
-const getAllTests = async () => {
-  return await Test.findMany({
+export const getAllTests = async () => {
+  return await prisma.test.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       centers: {
@@ -23,8 +23,8 @@ const getAllTests = async () => {
   });
 };
 
-const getTestById = async (id) => {
-  const test = await Test.findUnique({
+export const getTestById = async (id) => {
+  const test = await prisma.test.findUnique({
     where: { id },
     include: {
       centers: {
@@ -41,29 +41,21 @@ const getTestById = async (id) => {
   return test;
 };
 
-const updateTest = async (id, data) => {
-  const test = await Test.findUnique({ where: { id } });
+export const updateTest = async (id, data) => {
+  const test = await prisma.test.findUnique({ where: { id } });
   if (!test) {
     throw new Error("Diagnostic Test not found");
   }
-  return await Test.update({
+  return await prisma.test.update({
     where: { id },
     data,
   });
 };
 
-const deleteTest = async (id) => {
-  const test = await Test.findUnique({ where: { id } });
+export const deleteTest = async (id) => {
+  const test = await prisma.test.findUnique({ where: { id } });
   if (!test) {
     throw new Error("Diagnostic Test not found");
   }
-  return await Test.delete({ where: { id } });
-};
-
-module.exports = {
-  createTest,
-  getAllTests,
-  getTestById,
-  updateTest,
-  deleteTest,
+  return await prisma.test.delete({ where: { id } });
 };

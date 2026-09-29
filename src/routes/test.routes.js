@@ -1,14 +1,14 @@
-const express = require("express");
-const testController = require("../controllers/test.controller");
-const validate = require("../middleware/validation.middleware");
-const { createTestSchema, updateTestSchema } = require("../schemas/test.schema");
+import express from "express";
+import * as testController from "../controllers/test.controller.js";
+import validate from "../middleware/validation.middleware.js";
 
 const router = express.Router();
 
-router.post("/", validate(createTestSchema), testController.createTest);
+router.post("/", validate(["name"]), testController.createTest);
 router.get("/", testController.getAllTests);
 router.get("/:id", testController.getTestById);
-router.put("/:id", validate(updateTestSchema), testController.updateTest);
+router.get("/:id/centers", testController.getCentersByTestId);
+router.put("/:id", testController.updateTest);
 router.delete("/:id", testController.deleteTest);
 
-module.exports = router;
+export default router;

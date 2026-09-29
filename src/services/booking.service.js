@@ -1,8 +1,29 @@
-const { prisma, Booking, AvailabilitySlot } = require("../models");
+import prisma from "../config/prisma.js";
+import redis from "../config/redis.js";
+import {
+  formatDate,
+  formatTime,
+  getSlotLockKey,
+  getSlotLockKeyDetailed,
+  getSlotLockKeyBasic,
+} from "../utils/redisKeys.util.js";
 
-const createBooking = async (userId, slotId) => {
-  const slot = await AvailabilitySlot.findUnique({
+/**
+ * Create a new pending booking for a slot.
+ * Locks the slot in Redis for 10 minutes (TTL 600s).
+ * Slot status in DB remains open/pending until payment completion.
+ */
+export const createBooking = async (userId, slotId) => {
+  const slot = await prisma.availabilitySlot.findUnique({
     where: { id: slotId },
+    include: {
+      diagnosticCenterTest: {
+        include: {
+          diagnosticCenter: true,
+          test: true,
+        },
+      },
+    },
   });
 
   if (!slot) {
@@ -13,53 +34,77 @@ const createBooking = async (userId, slotId) => {
     throw new Error("Slot is not available for booking");
   }
 
-  // Create booking & update slot in transaction with increased timeout
-  return await prisma.$transaction(
-    async (tx) => {
-      const booking = await tx.booking.create({
-        data: {
-          userId,
-          slotId,
-          status: "pending",
+  const slotLockKey = getSlotLockKey(slotId);
+  const dateStr = formatDate(slot.startTime);
+  const timeStr = formatTime(slot.startTime);
+  const centerId = slot.diagnosticCenterTest.diagnosticCenterId;
+  const testId = slot.diagnosticCenterTest.testId;
+
+  const lockKeyBasic = getSlotLockKeyBasic(slotId, dateStr, timeStr);
+  const lockKeyDetailed = getSlotLockKeyDetailed(slotId, dateStr, timeStr, centerId, testId);
+
+  let lockAcquired = false;
+  try {
+    // Acquire 10-minute (600 seconds) Redis lock
+    const lockResult = await redis.set(slotLockKey, userId, "EX", 600, "NX");
+    if (lockResult === "OK") {
+      lockAcquired = true;
+      await redis.set(lockKeyBasic, userId, "EX", 600, "NX");
+      await redis.set(lockKeyDetailed, userId, "EX", 600, "NX");
+    }
+  } catch (err) {
+    console.warn("[Redis Lock Warning] Redis unreachable, using DB check:", err.message);
+    lockAcquired = true;
+  }
+
+  if (!lockAcquired) {
+    throw new Error("Slot is currently locked by another booking attempt (TTL: 10 mins). Please try another slot.");
+  }
+
+  try {
+    const booking = await prisma.booking.create({
+      data: {
+        userId,
+        slotId,
+        status: "pending",
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
         },
-        include: {
-          user: {
-            select: { id: true, name: true, email: true },
-          },
-          slot: {
-            include: {
-              diagnosticCenterTest: {
-                include: {
-                  diagnosticCenter: true,
-                  test: true,
-                },
+        slot: {
+          include: {
+            diagnosticCenterTest: {
+              include: {
+                diagnosticCenter: true,
+                test: true,
               },
             },
           },
         },
-      });
+      },
+    });
 
-      await tx.availabilitySlot.update({
-        where: { id: slotId },
-        data: { status: "booked" },
-      });
-
-      return booking;
-    },
-    {
-      maxWait: 10000,
-      timeout: 30000,
+    return booking;
+  } catch (error) {
+    try {
+      await redis.del(slotLockKey);
+      await redis.del(lockKeyDetailed);
+      await redis.del(lockKeyBasic);
+    } catch (err) {
+      console.warn("[Redis Lock Release Error]", err.message);
     }
-  );
+    throw error;
+  }
 };
 
-const getBookings = async (userId) => {
+export const getBookings = async (userId) => {
   const where = {};
   if (userId) {
     where.userId = userId;
   }
 
-  return await Booking.findMany({
+  return await prisma.booking.findMany({
     where,
     orderBy: { createdAt: "desc" },
     include: {
@@ -81,8 +126,8 @@ const getBookings = async (userId) => {
   });
 };
 
-const getBookingById = async (id) => {
-  const booking = await Booking.findUnique({
+export const getBookingById = async (id) => {
+  const booking = await prisma.booking.findUnique({
     where: { id },
     include: {
       user: {
@@ -109,8 +154,8 @@ const getBookingById = async (id) => {
   return booking;
 };
 
-const cancelBooking = async (id) => {
-  const booking = await Booking.findUnique({ where: { id } });
+export const cancelBooking = async (id) => {
+  const booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) {
     throw new Error("Booking not found");
   }
@@ -119,7 +164,7 @@ const cancelBooking = async (id) => {
     throw new Error("Booking is already canceled");
   }
 
-  return await prisma.$transaction(
+  const result = await prisma.$transaction(
     async (tx) => {
       const updated = await tx.booking.update({
         where: { id },
@@ -138,11 +183,13 @@ const cancelBooking = async (id) => {
       timeout: 30000,
     }
   );
-};
 
-module.exports = {
-  createBooking,
-  getBookings,
-  getBookingById,
-  cancelBooking,
+  try {
+    const slotLockKey = getSlotLockKey(booking.slotId);
+    await redis.del(slotLockKey);
+  } catch (err) {
+    console.warn("[Redis Lock Release Warning]", err.message);
+  }
+
+  return result;
 };

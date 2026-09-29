@@ -1,24 +1,31 @@
 {
   "name": "eve_backend_project",
   "version": "1.0.0",
-  "description": "",
+  "description": "Diagnostic Test Booking & Payment Backend Service",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "migrate": "node migrations/migrate.js",
+    "migration:generate": "prisma migrate dev --name init",
+    "migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:pull": "prisma db pull",
+    "db:seed": "node src/scripts/seed.js",
+    "prisma:generate": "prisma generate",
     "test": "jest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.6.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {
