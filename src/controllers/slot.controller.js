@@ -1,4 +1,5 @@
 import * as slotService from "../services/slot.service.js";
+import { getPaginationParams, formatPaginatedResponse } from "../utils/pagination.util.js";
 
 export const createSlot = async (req, res) => {
   try {
@@ -26,6 +27,7 @@ export const createSlot = async (req, res) => {
 export const getSlots = async (req, res) => {
   try {
     const { centerTestId, status, diagnostic_center_id, test_id } = req.query;
+    const { page, limit, skip } = getPaginationParams(req.query);
 
     if (diagnostic_center_id && test_id) {
       const result = await slotService.getSlotsByCenterAndTest(diagnostic_center_id, test_id);
@@ -36,11 +38,14 @@ export const getSlots = async (req, res) => {
       });
     }
 
-    const slots = await slotService.getSlots({ centerTestId, status });
+    const { slots, totalCount } = await slotService.getSlots({ centerTestId, status }, skip, limit);
+    const paginated = formatPaginatedResponse(slots, totalCount, page, limit);
+
     return res.status(200).json({
       success: true,
       message: "Availability slots retrieved successfully",
-      data: slots,
+      data: paginated.data,
+      pagination: paginated.pagination,
     });
   } catch (error) {
     return res.status(500).json({

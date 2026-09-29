@@ -1,4 +1,5 @@
 import * as centerTestService from "../services/centerTest.service.js";
+import { getPaginationParams, formatPaginatedResponse } from "../utils/pagination.util.js";
 
 export const createCenterTest = async (req, res) => {
   try {
@@ -25,11 +26,15 @@ export const createCenterTest = async (req, res) => {
 
 export const getAllCenterTests = async (req, res) => {
   try {
-    const centerTests = await centerTestService.getAllCenterTests();
+    const { page, limit, skip } = getPaginationParams(req.query);
+    const { centerTests, totalCount } = await centerTestService.getAllCenterTests(skip, limit);
+    const paginated = formatPaginatedResponse(centerTests, totalCount, page, limit);
+
     return res.status(200).json({
       success: true,
       message: "Diagnostic center test mappings retrieved successfully",
-      data: centerTests,
+      data: paginated.data,
+      pagination: paginated.pagination,
     });
   } catch (error) {
     return res.status(500).json({

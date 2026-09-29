@@ -1,4 +1,5 @@
 import * as bookingService from "../services/booking.service.js";
+import { getPaginationParams, formatPaginatedResponse } from "../utils/pagination.util.js";
 
 export const createBooking = async (req, res) => {
   try {
@@ -22,11 +23,16 @@ export const createBooking = async (req, res) => {
 export const getBookings = async (req, res) => {
   try {
     const { userId } = req.query;
-    const bookings = await bookingService.getBookings(userId);
+    const { page, limit, skip } = getPaginationParams(req.query);
+
+    const { bookings, totalCount } = await bookingService.getBookings(userId, skip, limit);
+    const paginated = formatPaginatedResponse(bookings, totalCount, page, limit);
+
     return res.status(200).json({
       success: true,
       message: "Bookings retrieved successfully",
-      data: bookings,
+      data: paginated.data,
+      pagination: paginated.pagination,
     });
   } catch (error) {
     return res.status(500).json({

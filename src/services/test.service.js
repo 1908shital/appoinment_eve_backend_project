@@ -10,8 +10,11 @@ export const createTest = async (name, description, disease) => {
   });
 };
 
-export const getAllTests = async () => {
-  return await prisma.test.findMany({
+export const getAllTests = async (skip = 0, limit = 10) => {
+  const totalCount = await prisma.test.count();
+  const tests = await prisma.test.findMany({
+    skip,
+    take: limit,
     orderBy: { createdAt: "desc" },
     include: {
       centers: {
@@ -21,6 +24,8 @@ export const getAllTests = async () => {
       },
     },
   });
+
+  return { tests, totalCount };
 };
 
 export const getTestById = async (id) => {

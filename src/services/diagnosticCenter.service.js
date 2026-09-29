@@ -7,8 +7,11 @@ export const createCenter = async (name, location) => {
   });
 };
 
-export const getAllCenters = async () => {
-  return await prisma.diagnosticCenter.findMany({
+export const getAllCenters = async (skip = 0, limit = 10) => {
+  const totalCount = await prisma.diagnosticCenter.count();
+  const centers = await prisma.diagnosticCenter.findMany({
+    skip,
+    take: limit,
     orderBy: { createdAt: "desc" },
     include: {
       tests: {
@@ -18,6 +21,8 @@ export const getAllCenters = async () => {
       },
     },
   });
+
+  return { centers, totalCount };
 };
 
 export const getCenterById = async (id) => {
@@ -38,7 +43,6 @@ export const getCenterById = async (id) => {
   return center;
 };
 
-// API 2: Get all diagnostic center tests in a diagnostic center
 export const getCenterTestsByCenterId = async (centerId) => {
   const cacheKey = `center:tests:${centerId}`;
 
@@ -77,7 +81,6 @@ export const getCenterTestsByCenterId = async (centerId) => {
   return { source: "database", data: centerTests };
 };
 
-// API 3: Get all diagnostic centers where a particular test by test_id is present
 export const getCentersByTestId = async (testId) => {
   const cacheKey = `test:centers:${testId}`;
 

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "diagnostic-booking-api-collection",
 		"name": "Diagnostic Booking System API (Prisma Backend)",
-		"description": "Complete Postman API Collection with JWT Bearer Auth for testing Users, Centers, Tests, Center-Test mappings, Availability Slots, Bookings, and Idempotent Payments.",
+		"description": "Complete Postman API Collection with JWT Bearer Auth and Pagination (page, limit, totalCount, totalPages, hasMore) for testing Users, Centers, Tests, Center-Test mappings, Availability Slots, Bookings, and Idempotent Payments.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -143,14 +143,18 @@
 					}
 				},
 				{
-					"name": "Get All Diagnostic Centers",
+					"name": "Get All Diagnostic Centers (Paginated)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/diagnostic-centers",
+							"raw": "{{baseUrl}}/diagnostic-centers?page=1&limit=10",
 							"host": ["{{baseUrl}}"],
-							"path": ["diagnostic-centers"]
+							"path": ["diagnostic-centers"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" }
+							]
 						}
 					}
 				},
@@ -262,14 +266,18 @@
 					}
 				},
 				{
-					"name": "Get All Tests",
+					"name": "Get All Tests (Paginated)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/tests",
+							"raw": "{{baseUrl}}/tests?page=1&limit=10",
 							"host": ["{{baseUrl}}"],
-							"path": ["tests"]
+							"path": ["tests"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" }
+							]
 						}
 					}
 				},
@@ -381,14 +389,18 @@
 					}
 				},
 				{
-					"name": "Get All Center Tests",
+					"name": "Get All Center Tests (Paginated)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/center-tests",
+							"raw": "{{baseUrl}}/center-tests?page=1&limit=10",
 							"host": ["{{baseUrl}}"],
-							"path": ["center-tests"]
+							"path": ["center-tests"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" }
+							]
 						}
 					}
 				},
@@ -476,16 +488,18 @@
 					}
 				},
 				{
-					"name": "Get Available Slots",
+					"name": "Get Available Slots (Paginated)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/slots?status=open",
+							"raw": "{{baseUrl}}/slots?status=open&page=1&limit=10",
 							"host": ["{{baseUrl}}"],
 							"path": ["slots"],
 							"query": [
-								{ "key": "status", "value": "open" }
+								{ "key": "status", "value": "open" },
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" }
 							]
 						}
 					}
@@ -578,7 +592,7 @@
 					}
 				},
 				{
-					"name": "Get All Bookings (Auth)",
+					"name": "Get All Bookings (Auth, Paginated)",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -589,9 +603,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/bookings",
+							"raw": "{{baseUrl}}/bookings?page=1&limit=10",
 							"host": ["{{baseUrl}}"],
-							"path": ["bookings"]
+							"path": ["bookings"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" }
+							]
 						}
 					}
 				},

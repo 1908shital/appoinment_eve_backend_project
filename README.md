@@ -2,7 +2,7 @@
 
 Production-grade, high-concurrency backend API service built with **Node.js**, **Express**, **Prisma ORM**, **PostgreSQL**, and **Redis**. 
 
-This system handles diagnostic center catalog browsing, automated 7-day slot generation via nightly cron jobs, 10-minute temporary Redis slot locking during booking, and idempotent simulated payment processing with **1-day JWT Bearer Token Authentication**.
+This system handles diagnostic center catalog browsing, automated 7-day slot generation via nightly cron jobs, 10-minute temporary Redis slot locking during booking, idempotent simulated payment processing, and **standardized API pagination**.
 
 ---
 
@@ -15,7 +15,8 @@ This system handles diagnostic center catalog browsing, automated 7-day slot gen
    - [Option B: Local Node.js Development](#option-b-local-nodejs-development)
 5. [Database & Schema Design](#-database--schema-design)
 6. [Booking & Payment State Machine](#-booking--payment-state-machine)
-7. [Complete API Endpoints Reference](#-complete-api-endpoints-reference)
+7. [Pagination Standard](#-pagination-standard)
+8. [Complete API Endpoints Reference](#-complete-api-endpoints-reference)
    - [1. Authentication & User Management](#1-authentication--user-management-apiusers)
    - [2. Diagnostic Centers Catalog](#2-diagnostic-centers-catalog-apidiagnostic-centers)
    - [3. Diagnostic Tests Catalog](#3-diagnostic-tests-catalog-apitests)
@@ -24,13 +25,14 @@ This system handles diagnostic center catalog browsing, automated 7-day slot gen
    - [6. Slot Bookings & 10-Min Redis Locks](#6-slot-bookings--10-min-redis-locks-apibookings)
    - [7. Payments & Idempotent Webhooks](#7-payments--idempotent-webhooks-apipayments)
    - [8. System Health Check](#8-system-health-check-health)
-8. [Postman Collection](#-postman-collection)
-9. [Future Improvements](#-future-improvements)
+9. [Postman Collection](#-postman-collection)
+10. [Future Improvements](#-future-improvements)
 
 ---
 
 ## 🚀 Key Features
 
+- **Standardized Pagination**: All `getAll` list endpoints support `page` and `limit` query parameters, returning `totalCount`, `totalPages`, and `hasMore` pagination metadata.
 - **JWT Authentication (`authMiddleware`)**: 1-day expiration JWT tokens (`expiresIn: "1d"`) protecting all Create, Update, and Delete endpoints via `Authorization: Bearer <token>`.
 - **Automated Slot Generation (Cron)**: Nightly cron job at `03:30 AM IST` generates 1-hour availability slots for the next 7 days for all diagnostic center test mappings.
 - **Concurrency Control & Redis Locking**: Temporary 10-minute Redis lock (`TTL: 600s`) prevents race conditions and double bookings. Locked slots are dynamically filtered out and hidden from other users.
@@ -54,17 +56,51 @@ This system handles diagnostic center catalog browsing, automated 7-day slot gen
 
 ## 💡 Important Assumptions
 
-1. **JWT Authentication**:
+1. **Pagination Defaults**:
+   - `page`: default `1` (1-indexed).
+   - `limit`: default `10` (max limit: `100`).
+2. **JWT Authentication**:
    - Issued JWT tokens expire in **1 day** (`JWT_EXPIRES_IN="1d"`).
    - Protected endpoints require `Authorization: Bearer <token>` header verified by `authMiddleware`.
-2. **Slot Duration**: Every availability slot is strictly **1 hour** long.
-3. **Diagnostic Center Operating Hours**: Diagnostic centers operate from **10:00 AM IST to 06:00 PM IST** (8 1-hour slots per day per center-test mapping: `10-11`, `11-12`, `12-13`, `13-14`, `14-15`, `15-16`, `16-17`, `17-18`).
-4. **10-Minute Payment Window & Redis Lock**:
+3. **Slot Duration**: Every availability slot is strictly **1 hour** long.
+4. **Diagnostic Center Operating Hours**: Diagnostic centers operate from **10:00 AM IST to 06:00 PM IST** (8 1-hour slots per day per center-test mapping: `10-11`, `11-12`, `12-13`, `13-14`, `14-15`, `15-16`, `16-17`, `17-18`).
+5. **10-Minute Payment Window & Redis Lock**:
    - When a user initiates a booking (`POST /api/bookings`), a 10-minute lock (`TTL: 600s`) is set in Redis (`slot_lock:<slot_id>`).
    - The slot is immediately hidden from other users during slot availability searches (`GET /api/slots`).
    - If payment succeeds within 10 minutes, the slot is marked as `booked` in PostgreSQL and the Redis lock is removed.
    - If payment fails or is canceled, the Redis lock is removed so the slot becomes visible and available again for other users.
-5. **Timezone**: All slot calculations and scheduled cron jobs run according to **IST (Indian Standard Time, UTC+5:30)**.
+6. **Timezone**: All slot calculations and scheduled cron jobs run according to **IST (Indian Standard Time, UTC+5:30)**.
+
+---
+
+## 📄 Pagination Standard
+
+All list endpoints (`GET /api/diagnostic-centers`, `GET /api/tests`, `GET /api/center-tests`, `GET /api/slots`, `GET /api/bookings`) support query parameters:
+
+- `page`: Page number (e.g. `1`)
+- `limit`: Number of records per page (e.g. `10`)
+
+### Standard Response Structure:
+```json
+{
+  "success": true,
+  "message": "Diagnostic centers retrieved successfully",
+  "data": [
+    {
+      "id": "c1f7b80a-9d22-482a-9e11-8899aabbcc00",
+      "name": "Apollo Diagnostics - Indiranagar",
+      "location": "100 Feet Road, Indiranagar, Bengaluru, Karnataka"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "totalCount": 45,
+    "totalPages": 5,
+    "hasMore": true
+  }
+}
+```
 
 ---
 
@@ -187,34 +223,14 @@ Booking (1) ───? Payment (1)
 #### Register User
 - **Method**: `POST`
 - **Endpoint**: `/api/users/signup`
-- **Request Body**:
-  ```json
-  {
-    "name": "Rahul Sharma",
-    "email": "rahul.sharma@example.in",
-    "password": "Password123!",
-    "phone_number": "+919876543210",
-    "address": "Indiranagar, Bengaluru",
-    "age": 29,
-    "gender": "Male"
-  }
-  ```
 
 #### Login User (Generates 1-Day JWT Token)
 - **Method**: `POST`
 - **Endpoint**: `/api/users/login`
-- **Request Body**:
-  ```json
-  {
-    "email": "rahul.sharma@example.in",
-    "password": "Password123!"
-  }
-  ```
 
 #### Get User Profile by ID 🔒
 - **Method**: `GET`
 - **Endpoint**: `/api/users/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 ---
 
@@ -223,18 +239,10 @@ Booking (1) ───? Payment (1)
 #### Create Diagnostic Center 🔒
 - **Method**: `POST`
 - **Endpoint**: `/api/diagnostic-centers`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "name": "Apollo Diagnostics - Indiranagar",
-    "location": "100 Feet Road, Indiranagar, Bengaluru, Karnataka"
-  }
-  ```
 
-#### Get All Diagnostic Centers (Public)
+#### Get All Diagnostic Centers (Paginated)
 - **Method**: `GET`
-- **Endpoint**: `/api/diagnostic-centers`
+- **Endpoint**: `/api/diagnostic-centers?page=1&limit=10`
 
 #### Get Diagnostic Center Details by ID (Public)
 - **Method**: `GET`
@@ -247,19 +255,10 @@ Booking (1) ───? Payment (1)
 #### Update Diagnostic Center Details 🔒
 - **Method**: `PUT`
 - **Endpoint**: `/api/diagnostic-centers/:id`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "name": "Apollo Diagnostics - Indiranagar Main Branch",
-    "location": "Indiranagar 100ft Road, Bengaluru"
-  }
-  ```
 
 #### Delete Diagnostic Center 🔒
 - **Method**: `DELETE`
 - **Endpoint**: `/api/diagnostic-centers/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 ---
 
@@ -268,19 +267,10 @@ Booking (1) ───? Payment (1)
 #### Create Diagnostic Test 🔒
 - **Method**: `POST`
 - **Endpoint**: `/api/tests`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "name": "Full Body Lipid Profile",
-    "description": "Measures cholesterol, HDL, LDL, and triglycerides.",
-    "disease": "Cardiovascular Risk"
-  }
-  ```
 
-#### Get All Diagnostic Tests (Public)
+#### Get All Diagnostic Tests (Paginated)
 - **Method**: `GET`
-- **Endpoint**: `/api/tests`
+- **Endpoint**: `/api/tests?page=1&limit=10`
 
 #### Get Test Details by ID (Public)
 - **Method**: `GET`
@@ -293,12 +283,10 @@ Booking (1) ───? Payment (1)
 #### Update Diagnostic Test Details 🔒
 - **Method**: `PUT`
 - **Endpoint**: `/api/tests/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 #### Delete Diagnostic Test 🔒
 - **Method**: `DELETE`
 - **Endpoint**: `/api/tests/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 ---
 
@@ -307,19 +295,10 @@ Booking (1) ───? Payment (1)
 #### Create Center-Test Mapping with Pricing 🔒
 - **Method**: `POST`
 - **Endpoint**: `/api/center-tests`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "diagnostic_center_id": "<DIAGNOSTIC_CENTER_UUID>",
-    "test_id": "<TEST_UUID>",
-    "price": 499.00
-  }
-  ```
 
-#### Get All Center-Test Mappings (Public)
+#### Get All Center-Test Mappings (Paginated)
 - **Method**: `GET`
-- **Endpoint**: `/api/center-tests`
+- **Endpoint**: `/api/center-tests?page=1&limit=10`
 
 #### Get Center-Test Mapping Details by ID (Public)
 - **Method**: `GET`
@@ -328,7 +307,6 @@ Booking (1) ───? Payment (1)
 #### Delete Center-Test Mapping 🔒
 - **Method**: `DELETE`
 - **Endpoint**: `/api/center-tests/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 ---
 
@@ -337,33 +315,14 @@ Booking (1) ───? Payment (1)
 #### Create Custom Availability Slot 🔒
 - **Method**: `POST`
 - **Endpoint**: `/api/slots`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "diagnostic_center_test_id": "<CENTER_TEST_UUID>",
-    "start_time": "2026-09-30T10:00:00+05:30",
-    "end_time": "2026-09-30T11:00:00+05:30"
-  }
-  ```
 
 #### Trigger 7-Day Slot Generation (10 AM - 6 PM IST) 🔒
 - **Method**: `POST`
 - **Endpoint**: `/api/slots/generate-7days`
-- **Headers**: `Authorization: Bearer <token>`
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "message": "Generated 1-hour availability slots for the next 7 days (160 new slots created)",
-    "data": { "createdCount": 160 }
-  }
-  ```
 
-#### Get All Slots (Public, Filters Out Redis Locked Slots)
+#### Get All Slots (Paginated, Filters Out Redis Locked Slots)
 - **Method**: `GET`
-- **Endpoint**: `/api/slots`
-- **Query Parameters**: `centerTestId`, `status`, `diagnostic_center_id`, `test_id`
+- **Endpoint**: `/api/slots?status=open&page=1&limit=10`
 
 #### Get Slots for Center & Test (Query Params)
 - **Method**: `GET`
@@ -380,13 +339,6 @@ Booking (1) ───? Payment (1)
 #### Update Slot Status 🔒 (`open` / `booked`)
 - **Method**: `PATCH`
 - **Endpoint**: `/api/slots/:id/status`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "status": "booked"
-  }
-  ```
 
 ---
 
@@ -395,30 +347,18 @@ Booking (1) ───? Payment (1)
 #### Create Booking 🔒 (Locks Slot in Redis for 10 Minutes)
 - **Method**: `POST`
 - **Endpoint**: `/api/bookings`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "user_id": "<USER_UUID>",
-    "slot_id": "<SLOT_UUID>"
-  }
-  ```
 
-#### Get All Bookings / User Bookings 🔒
+#### Get All Bookings / User Bookings 🔒 (Paginated)
 - **Method**: `GET`
-- **Endpoint**: `/api/bookings`
-- **Headers**: `Authorization: Bearer <token>`
-- **Query Parameters**: `userId`
+- **Endpoint**: `/api/bookings?page=1&limit=10`
 
 #### Get Booking Details by ID 🔒
 - **Method**: `GET`
 - **Endpoint**: `/api/bookings/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 #### Cancel Booking 🔒 (Releases Redis Lock & Slot)
 - **Method**: `PATCH`
 - **Endpoint**: `/api/bookings/:id/cancel`
-- **Headers**: `Authorization: Bearer <token>`
 
 ---
 
@@ -427,33 +367,14 @@ Booking (1) ───? Payment (1)
 #### Create / Initialize Payment Simulation 🔒
 - **Method**: `POST`
 - **Endpoint**: `/api/payments`
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "booking_id": "<BOOKING_UUID>",
-    "mop": "UPI",
-    "amount": 499.00
-  }
-  ```
 
 #### Process Payment Webhook (Idempotent Event Handler)
 - **Method**: `POST`
 - **Endpoint**: `/api/payments/webhook`
-- **Request Body**:
-  ```json
-  {
-    "event_id": "evt_wh_seed_1001",
-    "payment_id": "<PAYMENT_UUID>",
-    "status": "success",
-    "receipt": "REC-20260929-1001"
-  }
-  ```
 
 #### Get Payment Details by ID 🔒
 - **Method**: `GET`
 - **Endpoint**: `/api/payments/:id`
-- **Headers**: `Authorization: Bearer <token>`
 
 ---
 
@@ -467,11 +388,7 @@ Booking (1) ───? Payment (1)
 
 ## 📬 Postman Collection
 
-The project includes an updated [**`postman_collection.json`**](file:///d:/Eve_Backend_Project/postman_collection.json) pre-configured with `Bearer {{token}}` authentication for all protected endpoints.
-
-1. Import `postman_collection.json` into Postman.
-2. Execute **User Login** (`POST /api/users/login`).
-3. Copy the returned `token` into your collection variable `{{token}}`. All protected requests will automatically send `Authorization: Bearer {{token}}`.
+The project includes an updated [**`postman_collection.json`**](file:///d:/Eve_Backend_Project/postman_collection.json) pre-configured with pagination query parameters (`page=1&limit=10`) and `Bearer {{token}}` authentication for all protected endpoints.
 
 ---
 

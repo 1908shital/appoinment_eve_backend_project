@@ -93,7 +93,7 @@ export const createSlot = async (diagnosticCenterTestId, startTime, endTime) => 
   return newSlot;
 };
 
-export const getSlots = async (filter = {}) => {
+export const getSlots = async (filter = {}, skip = 0, limit = 10) => {
   const where = {};
   if (filter.centerTestId) {
     where.diagnosticCenterTestId = filter.centerTestId;
@@ -102,8 +102,11 @@ export const getSlots = async (filter = {}) => {
     where.status = filter.status;
   }
 
+  const totalCount = await prisma.availabilitySlot.count({ where });
   const rawSlots = await prisma.availabilitySlot.findMany({
     where,
+    skip,
+    take: limit,
     orderBy: { startTime: "asc" },
     include: {
       diagnosticCenterTest: {
@@ -116,7 +119,8 @@ export const getSlots = async (filter = {}) => {
   });
 
   // Filter out any slot locked in Redis
-  return await filterUnlockedSlots(rawSlots);
+  const slots = await filterUnlockedSlots(rawSlots);
+  return { slots, totalCount };
 };
 
 export const getSlotById = async (id) => {

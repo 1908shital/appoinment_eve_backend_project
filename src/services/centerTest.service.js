@@ -37,8 +37,11 @@ export const createCenterTest = async (diagnosticCenterId, testId, price) => {
   return newMapping;
 };
 
-export const getAllCenterTests = async () => {
-  return await prisma.diagnosticCenterTest.findMany({
+export const getAllCenterTests = async (skip = 0, limit = 10) => {
+  const totalCount = await prisma.diagnosticCenterTest.count();
+  const centerTests = await prisma.diagnosticCenterTest.findMany({
+    skip,
+    take: limit,
     orderBy: { createdAt: "desc" },
     include: {
       diagnosticCenter: true,
@@ -46,6 +49,8 @@ export const getAllCenterTests = async () => {
       slots: true,
     },
   });
+
+  return { centerTests, totalCount };
 };
 
 export const getCenterTestById = async (id) => {

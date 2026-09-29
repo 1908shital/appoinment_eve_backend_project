@@ -98,14 +98,17 @@ export const createBooking = async (userId, slotId) => {
   }
 };
 
-export const getBookings = async (userId) => {
+export const getBookings = async (userId, skip = 0, limit = 10) => {
   const where = {};
   if (userId) {
     where.userId = userId;
   }
 
-  return await prisma.booking.findMany({
+  const totalCount = await prisma.booking.count({ where });
+  const bookings = await prisma.booking.findMany({
     where,
+    skip,
+    take: limit,
     orderBy: { createdAt: "desc" },
     include: {
       user: {
@@ -124,6 +127,8 @@ export const getBookings = async (userId) => {
       payment: true,
     },
   });
+
+  return { bookings, totalCount };
 };
 
 export const getBookingById = async (id) => {

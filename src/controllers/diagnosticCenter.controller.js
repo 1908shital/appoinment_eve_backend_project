@@ -1,4 +1,5 @@
 import * as diagnosticCenterService from "../services/diagnosticCenter.service.js";
+import { getPaginationParams, formatPaginatedResponse } from "../utils/pagination.util.js";
 
 export const createCenter = async (req, res) => {
   try {
@@ -21,11 +22,15 @@ export const createCenter = async (req, res) => {
 
 export const getAllCenters = async (req, res) => {
   try {
-    const centers = await diagnosticCenterService.getAllCenters();
+    const { page, limit, skip } = getPaginationParams(req.query);
+    const { centers, totalCount } = await diagnosticCenterService.getAllCenters(skip, limit);
+    const paginated = formatPaginatedResponse(centers, totalCount, page, limit);
+
     return res.status(200).json({
       success: true,
       message: "Diagnostic centers retrieved successfully",
-      data: centers,
+      data: paginated.data,
+      pagination: paginated.pagination,
     });
   } catch (error) {
     return res.status(500).json({
